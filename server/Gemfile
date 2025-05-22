@@ -22,6 +22,7 @@ gem "data_migrate"
 gem "mysql2"
 gem "parallel"
 gem "pg", "~> 1.1"       # PostgreSQL Database
+gem "pinecone"
 gem "puma", ">= 5.0"     # Web server
 gem "rails", "~> 7.1.1"  # Core Rails gem
 
@@ -43,6 +44,7 @@ gem "pundit"
 gem "ruby-saml"
 # Utilities
 gem "activerecord_json_validator", "~> 2.1.0"
+gem "acts-as-taggable-on", "~> 12.0"
 gem "bootsnap", require: false # Reduces boot time
 gem "counter_culture", "~> 3.3"
 gem "fugit"
@@ -102,3 +104,5 @@ end
 
 # NOTE: Removed unused or commented-out gems for better readability.
 gem "premailer-rails"
+
+gem "prometheus-client", "~> 4.2"

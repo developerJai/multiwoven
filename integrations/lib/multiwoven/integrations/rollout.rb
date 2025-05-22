@@ -26,6 +26,8 @@ module Multiwoven
       WatsonxData
       Anthropic
       Audience
+      AwsBedrockModel
+      GenericOpenAI
     ].freeze
 
     ENABLED_DESTINATIONS = %w[
@@ -52,6 +54,8 @@ module Multiwoven
       AISDataStore
       AmazonS3
       MicrosoftDynamics
+      Qdrant
+      PineconeDB
     ].freeze
   end
 end
