@@ -12,6 +12,8 @@ admin_policies = {
     "connector_definition" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "model" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "sync" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "sync_run" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "sync_record" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "alert" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "report" => { "read" => true, "create" => true, "update" => true, "delete" => true }
   }
@@ -32,6 +34,8 @@ member_policies = {
     "connector" => { "read" => true, "create" => true, "update" => true, "delete" => false },
     "model" => { "read" => true, "create" => true, "update" => true, "delete" => false },
     "sync" => { "read" => true, "create" => true, "update" => true, "delete" => false },
+    "sync_run" => { "read" => true, "create" => true, "update" => true, "delete" => false },
+    "sync_record" => { "read" => true, "create" => true, "update" => true, "delete" => false },
     "workspace" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "workspace_user" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "role" => { "read" => true, "create" => false, "update" => false, "delete" => false },
@@ -54,6 +58,8 @@ viewer_policies = {
     "connector" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "model" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "sync" => { "read" => true, "create" => false, "update" => false, "delete" => false },
+    "sync_run" => { "read" => true, "create" => false, "update" => false, "delete" => false },
+    "sync_record" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "workspace" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "workspace_user" => { "read" => true, "create" => false, "update" => false, "delete" => false },
     "role" => { "read" => true, "create" => false, "update" => false, "delete" => false },
