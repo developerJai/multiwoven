@@ -1752,6 +1752,7 @@ GEM
     discard (1.3.0)
       activerecord (>= 4.2, < 8)
     docile (1.4.0)
+    dotenv (3.1.8)
     drb (2.2.1)
     dry-auto_inject (1.0.1)
       dry-core (~> 1.0)
@@ -2315,6 +2316,7 @@ DEPENDENCIES
   devise-jwt
   devise_invitable
   discard
+  dotenv
   dry-validation
   factory_bot_rails
   faker

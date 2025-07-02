@@ -5,13 +5,15 @@ puts "Creating default roles..."
 # Define the Admin role with full permissions
 admin_policies = {
   "permissions" => {
-    "connector" => { "read" => true, "create" => true, "update" => true, "delete" => true },
-    "model" => { "read" => true, "create" => true, "update" => true, "delete" => true },
-    "sync" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "role" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "workspace" => { "read" => true, "create" => true, "update" => true, "delete" => true },
     "workspace_user" => { "read" => true, "create" => true, "update" => true, "delete" => true },
-    "role" => { "read" => true, "create" => true, "update" => true, "delete" => true },
-    "alert" => { "read" => true, "create" => true, "update" => true, "delete" => true }
+    "connector" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "connector_definition" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "model" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "sync" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "alert" => { "read" => true, "create" => true, "update" => true, "delete" => true },
+    "report" => { "read" => true, "create" => true, "update" => true, "delete" => true }
   }
 }
 

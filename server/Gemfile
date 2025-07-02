@@ -78,6 +78,8 @@ group :development do
   gem "rubocop-rails", require: false
 end
 
+gem 'dotenv', groups: [:development, :test]
+
 # Production Environment
 group :production do
   # Add production-only gems here.
