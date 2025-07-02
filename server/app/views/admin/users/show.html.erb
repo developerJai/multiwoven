@@ -114,8 +114,9 @@
       </div>
       <div class="col-md-8">
          <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                <h5 class="card-title mb-0">Workspaces</h5>
+               <%= link_to "View User's Syncs", admin_user_syncs_path(@user), class: "btn btn-sm btn-primary" %>
             </div>
             <div class="card-body">
                <div class="table-responsive">

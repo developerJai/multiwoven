@@ -1,0 +1,58 @@
+<div id="page-loader" class="page-loader">
+  <div class="progress-bar"></div>
+</div>
+
+<style>
+  .page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    visibility: hidden;
+  }
+  
+  .page-loader .progress-bar {
+    height: 5px;
+    background: linear-gradient(to right, #4285f4, #34a853, #fbbc05, #ea4335);
+    width: 0%;
+  }
+  
+  .page-loader.loading .progress-bar {
+    width: 100%;
+    transition: width 10s cubic-bezier(0.1, 0.05, 0.1, 1);
+  }
+  
+  .page-loader.loading {
+    visibility: visible;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Show loader on page load
+    const loader = document.getElementById('page-loader');
+    loader.classList.add('loading');
+    
+    // Hide loader when page is fully loaded
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        loader.classList.remove('loading');
+      }, 500);
+    });
+    
+    // Show loader when submitting forms
+    document.querySelectorAll('form').forEach(function(form) {
+      form.addEventListener('submit', function() {
+        loader.classList.add('loading');
+      });
+    });
+    
+    // Show loader when clicking on links with specific classes
+    document.querySelectorAll('a.pagination, a.filter-link, a.sort-link').forEach(function(link) {
+      link.addEventListener('click', function() {
+        loader.classList.add('loading');
+      });
+    });
+  });
+</script>
