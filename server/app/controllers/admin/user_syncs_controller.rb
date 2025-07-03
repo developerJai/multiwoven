@@ -20,7 +20,7 @@ module Admin
       
       # Filter by name (stream_name) if provided
       if params[:name].present?
-        @syncs = @syncs.where("stream_name ILIKE ?", "%#{params[:name]}%")
+        @syncs = @syncs.where("name ILIKE ?", "%#{params[:name]}%")
       end
       
       # Pagination
@@ -49,7 +49,8 @@ module Admin
     end
     
     def sync_records
-      @sync_run = SyncRun.find(params[:sync_run_id])
+      # @sync is already set by the find_sync before_action
+      @sync_run = @sync.sync_runs.find(params[:sync_run_id])
       @sync_records = @sync_run.sync_records
       
       # Apply sorting
@@ -60,6 +61,11 @@ module Admin
       # Filter by status if provided
       if params[:status].present?
         @sync_records = @sync_records.where(status: params[:status])
+      end
+      
+      # Filter by destination write status if provided
+      if params[:destination_write_status].present?
+        @sync_records = @sync_records.where(destination_write_status: params[:destination_write_status])
       end
       
       # Get total count before pagination

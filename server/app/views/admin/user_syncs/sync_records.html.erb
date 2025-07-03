@@ -55,22 +55,38 @@
                     {}, class: 'form-select' %>
       </div>
       <div class="col-md-3">
-        <label for="sort" class="form-label">Sort By</label>
-        <%= f.select :sort, 
-                    options_for_select([['Created At', 'created_at'], ['Updated At', 'updated_at']], 
-                                       selected: params[:sort] || 'created_at'), 
+        <label for="destination_write_status" class="form-label">Destination Write Status</label>
+        <%= f.select :destination_write_status, 
+                    options_for_select([
+                      ['All', ''], 
+                      ['Not Started', 'dest_not_started'], 
+                      ['In Progress', 'dest_in_progress'], 
+                      ['Written', 'dest_written'], 
+                      ['Failed', 'dest_failed'],
+                      ['Skipped', 'dest_skipped']
+                    ], selected: params[:destination_write_status]), 
                     {}, class: 'form-select' %>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
+        <label for="sort" class="form-label">Sort By</label>
+        <%= f.select :sort, 
+                    options_for_select([
+                      ['Created At', 'created_at'], 
+                      ['Updated At', 'updated_at'],
+                      ['Destination Written At', 'destination_written_at']
+                    ], selected: params[:sort] || 'created_at'), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-2">
         <label for="direction" class="form-label">Direction</label>
         <%= f.select :direction, 
                     options_for_select([['Descending', 'desc'], ['Ascending', 'asc']], 
                                        selected: params[:direction] || 'desc'), 
                     {}, class: 'form-select' %>
       </div>
-      <div class="col-md-3 d-flex align-items-end">
+      <div class="col-md-2 d-flex align-items-end">
         <%= f.submit 'Apply Filters', class: 'btn btn-primary me-2' %>
-        <%= link_to 'Clear Filters', records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-secondary' %>
+        <%= link_to 'Clear', records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-secondary' %>
       </div>
     <% end %>
   </div>
@@ -89,9 +105,10 @@
             <th>ID</th>
             <th>Record Data</th>
             <th>Status</th>
+            <th>Destination Status</th>
             <th>Error Message</th>
             <th>Created At</th>
-            <th>Updated At</th>
+            <th>Written At</th>
           </tr>
         </thead>
         <tbody>
@@ -119,13 +136,38 @@
                   <% end %>
                 </td>
                 <td>
-                  <% if record.respond_to?(:error_message) && record.error_message.present? %>
+                  <% if record.respond_to?(:destination_write_status) %>
+                    <% status_color = case record.destination_write_status
+                                      when 'destination_write_status_dest_written' then 'success'
+                                      when 'destination_write_status_dest_failed' then 'danger'
+                                      when 'destination_write_status_dest_skipped' then 'warning'
+                                      when 'destination_write_status_dest_in_progress' then 'info'
+                                      else 'secondary'
+                                      end %>
+                    <span class="badge bg-<%= status_color %>">
+                      <%= record.destination_write_status.to_s.sub('destination_write_status_dest_', '').titleize %>
+                    </span>
+                  <% else %>
+                    <span class="badge bg-secondary">Not Available</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if record.respond_to?(:destination_error_message) && record.destination_error_message.present? %>
                     <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#error-<%= record.id %>" aria-expanded="false">
                       View Error
                     </button>
                     <div class="collapse mt-2" id="error-<%= record.id %>">
                       <div class="card card-body">
-                        <pre class="mb-0"><%= record.error_message %></pre>
+                        <pre class="mb-0"><%= record.destination_error_message %></pre>
+                      </div>
+                    </div>
+                  <% elsif record.respond_to?(:logs) && record.logs.present? %>
+                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#logs-<%= record.id %>" aria-expanded="false">
+                      View Logs
+                    </button>
+                    <div class="collapse mt-2" id="logs-<%= record.id %>">
+                      <div class="card card-body">
+                        <pre class="mb-0"><%= JSON.pretty_generate(record.logs) rescue record.logs.to_s %></pre>
                       </div>
                     </div>
                   <% else %>
@@ -133,12 +175,12 @@
                   <% end %>
                 </td>
                 <td><%= record.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
-                <td><%= record.updated_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+                <td><%= record.destination_written_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="6" class="text-center">No sync records found</td>
+              <td colspan="7" class="text-center">No sync records found</td>
             </tr>
           <% end %>
         </tbody>
