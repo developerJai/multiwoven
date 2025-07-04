@@ -54,7 +54,7 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Stream Name</th>
+            <th>Name</th>
             <th>Source</th>
             <th>Destination</th>
             <th>Status</th>
@@ -68,7 +68,7 @@
             <% @syncs.each do |sync| %>
               <tr>
                 <td><%= sync.id %></td>
-                <td><%= sync.stream_name %></td>
+                <td><%= sync.name %></td>
                 <td><%= sync.source.name rescue 'N/A' %></td>
                 <td><%= sync.destination.name rescue 'N/A' %></td>
                 <td>
