@@ -156,23 +156,63 @@ module Multiwoven
             log_message_array = []
             write_success = 0
             write_failure = 0
+            detailed_errors = []
 
             records.each_slice(MAX_CHUNK_SIZE) do |chunk|
-              values = prepare_chunk_values(chunk, sync_config.stream)
-              request, response = *update_sheet_values(values, sync_config.stream.name)
-              write_success += values.size
-              log_message_array << log_request_response("info", request, response)
-            rescue StandardError => e
-              handle_exception(e, {
-                                 context: "GOOGLE_SHEETS:RECORD:WRITE:EXCEPTION",
-                                 type: "error",
-                                 sync_id: sync_config.sync_id,
-                                 sync_run_id: sync_config.sync_run_id
-                               })
-              write_failure += chunk.size
-              log_message_array << log_request_response("error", request, e.message)
+              begin
+                values = prepare_chunk_values(chunk, sync_config.stream)
+                request, response = *update_sheet_values(values, sync_config.stream.name)
+                
+                # Check if the response indicates success
+                if response && response.total_updated_cells && response.total_updated_cells > 0
+                  write_success += values.size
+                  log_message_array << log_request_response("info", request, response)
+                else
+                  write_failure += chunk.size
+                  error_message = "No cells were updated in Google Sheets"
+                  detailed_errors << {
+                    chunk_size: chunk.size,
+                    error: error_message,
+                    response: response&.to_h
+                  }
+                  log_message_array << log_request_response("error", request, error_message)
+                end
+              rescue Google::Apis::ClientError => e
+                # Handle Google API specific errors with detailed information
+                write_failure += chunk.size
+                error_details = {
+                  chunk_size: chunk.size,
+                  error: e.message,
+                  status_code: e.status_code,
+                  reason: e.reason
+                }
+                detailed_errors << error_details
+                log_message_array << log_request_response("error", request, "Google API Error: #{e.message}, Status: #{e.status_code}, Reason: #{e.reason}")
+              rescue Google::Apis::RateLimitError => e
+                # Handle rate limit errors specifically
+                write_failure += chunk.size
+                error_details = {
+                  chunk_size: chunk.size,
+                  error: "Rate limit exceeded: #{e.message}",
+                  retry_after: e.header['retry-after']
+                }
+                detailed_errors << error_details
+                log_message_array << log_request_response("error", request, "Rate limit exceeded: #{e.message}")
+              rescue StandardError => e
+                # Handle other errors
+                write_failure += chunk.size
+                error_details = {
+                  chunk_size: chunk.size,
+                  error: e.message,
+                  backtrace: e.backtrace&.first(3)
+                }
+                detailed_errors << error_details
+                log_message_array << log_request_response("error", request, e.message)
+              end
             end
-            tracking_message(write_success, write_failure, log_message_array)
+            
+            # Include detailed error information in the tracking message
+            tracking_message(write_success, write_failure, log_message_array, detailed_errors)
           end
 
           # We need to format the data to adhere to google sheets API format. This converts the sync mapped data to 2D array format expected by google sheets API
@@ -200,7 +240,6 @@ module Multiwoven
               data: [value_range]
             )
 
-            # TODO: Remove & this is added for the test to pass we need
             response = @client&.batch_update_values(@spreadsheet_id, batch_update_request)
             [batch_update_request, response]
           end
@@ -231,6 +270,27 @@ module Multiwoven
               emitted_at: Time.now.to_i,
               status: ConnectionStatusType[status],
               meta: { detail: message }
+            ).to_multiwoven_message
+          end
+          
+          # Enhanced tracking message with detailed error information
+          def tracking_message(success, failure, log_message_array, detailed_errors = [])
+            TrackingMessage.new(
+              type: "write",
+              emitted_at: Time.now.to_i,
+              success: success,
+              failure: failure,
+              logs: [
+                LogMessage.new(
+                  level: "info",
+                  message: {
+                    success: success,
+                    failure: failure,
+                    log_messages: log_message_array,
+                    detailed_errors: detailed_errors
+                  }.to_json
+                )
+              ]
             ).to_multiwoven_message
           end
         end

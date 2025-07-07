@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_18_121819) do
+ActiveRecord::Schema[7.1].define(version: 2025_07_03_005800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -427,6 +427,15 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_18_121819) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "super_admins", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "password_digest", null: false
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_super_admins_on_email", unique: true
+  end
+
   create_table "sync_files", force: :cascade do |t|
     t.string "file_name"
     t.string "file_path"
@@ -457,6 +466,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_18_121819) do
     t.string "primary_key"
     t.integer "status", default: 0
     t.jsonb "logs"
+    t.integer "destination_write_status", default: 0
+    t.text "destination_error_message"
+    t.datetime "destination_written_at"
     t.index ["sync_id", "fingerprint"], name: "index_sync_records_on_sync_id_and_fingerprint", unique: true
     t.index ["sync_id", "primary_key"], name: "index_sync_records_on_sync_id_and_primary_key", unique: true
   end
@@ -571,6 +583,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_18_121819) do
     t.boolean "eula_accepted", default: false, null: false
     t.boolean "eula_enabled", default: false, null: false
     t.datetime "eula_accepted_at"
+    t.string "simulate_req_token"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true

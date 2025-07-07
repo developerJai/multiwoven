@@ -17,6 +17,12 @@ Rails.application.routes.draw do
         # Add POST route for updating users
         post '', to: 'users#update'
       end
+      # Add nested resources for user syncs
+      resources :syncs, controller: 'user_syncs', only: [:index, :show] do
+        member do
+          get 'sync_run/:sync_run_id/records', to: 'user_syncs#sync_records', as: 'records'
+        end
+      end
     end
     root 'users#index'
     get 'setting/index', to: 'settings#index'

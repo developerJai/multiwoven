@@ -33,24 +33,37 @@ module ReverseEtl
           concurrency = sync_config.stream.request_rate_concurrency || THREAD_COUNT
 
           Parallel.each(sync_records, in_threads: concurrency) do |sync_record|
+            # Mark record as in progress for destination write
+            sync_record.mark_as_write_in_progress!
+            
             transformer = Transformers::UserMapping.new
             record = transformer.transform(sync, sync_record)
             Rails.logger.info "sync_id = #{sync.id} sync_run_id = #{sync_run.id} sync_record = #{record}"
-            report = handle_response(client.write(sync_config, [record], sync_record.action), sync_run)
-            update_sync_record_logs_and_status(report, sync_record)
-          rescue Activities::LoaderActivity::FullRefreshFailed
-            raise
-          rescue StandardError => e
-            # Utils::ExceptionReporter.report(e, {
-            #                                   sync_run_id: sync_run.id,
-            #                                   sync_id: sync.id
-            #                                 })
-            Rails.logger.error({
-              error_message: e.message,
-              sync_run_id: sync_run.id,
-              sync_id: sync_run.sync_id,
-              stack_trace: Rails.backtrace_cleaner.clean(e.backtrace)
-            }.to_s)
+            
+            begin
+              report = handle_response(client.write(sync_config, [record], sync_record.action), sync_run)
+              update_sync_record_logs_and_status(report, sync_record)
+              
+              # Update destination write status based on success/failure
+              if report.tracking.success.positive?
+                sync_record.mark_as_written!
+              else
+                error_message = extract_error_message(report)
+                sync_record.mark_as_write_failed!(error_message)
+              end
+            rescue Activities::LoaderActivity::FullRefreshFailed
+              raise
+            rescue StandardError => e
+              # Update destination write status to failed with error message
+              sync_record.mark_as_write_failed!(e.message)
+              
+              Rails.logger.error({
+                error_message: e.message,
+                sync_run_id: sync_run.id,
+                sync_id: sync_run.sync_id,
+                stack_trace: Rails.backtrace_cleaner.clean(e.backtrace)
+              }.to_s)
+            end
           end
 
           heartbeat(activity, sync_run)
@@ -68,20 +81,51 @@ module ReverseEtl
 
         Parallel.each(sync_run.sync_records.pending.find_in_batches(batch_size:),
                       in_threads: THREAD_COUNT) do |sync_records|
+          # Mark all records in batch as in progress for destination write
+          sync_record_ids = sync_records.map(&:id)
+          SyncRecord.where(id: sync_record_ids).update_all(destination_write_status: :dest_in_progress) # rubocop:disable Rails/SkipsModelValidations
+          
           transformed_records = sync_records.map { |sync_record| transformer.transform(sync, sync_record) }
-          report = handle_response(client.write(sync_config, transformed_records), sync_run)
-          if report.tracking.success.zero?
-            failed_sync_records.concat(sync_records.map { |record| record["id"] }.compact)
-          else
-            successfull_sync_records.concat(sync_records.map { |record| record["id"] }.compact)
+          
+          begin
+            report = handle_response(client.write(sync_config, transformed_records), sync_run)
+            
+            if report.tracking.success.zero?
+              failed_sync_records.concat(sync_records.map(&:id))
+              
+              # Extract error message from report if available
+              error_message = extract_error_message(report)
+              
+              # Update destination write status for failed records
+              SyncRecord.where(id: sync_records.map(&:id)).update_all( # rubocop:disable Rails/SkipsModelValidations
+                destination_write_status: :dest_failed,
+                destination_written_at: Time.current,
+                destination_error_message: error_message
+              )
+            else
+              successfull_sync_records.concat(sync_records.map(&:id))
+              
+              # Update destination write status for successful records
+              SyncRecord.where(id: sync_records.map(&:id)).update_all( # rubocop:disable Rails/SkipsModelValidations
+                destination_write_status: :dest_written,
+                destination_written_at: Time.current,
+                destination_error_message: nil
+              )
+            end
+          rescue Activities::LoaderActivity::FullRefreshFailed
+            raise
+          rescue StandardError => e
+            failed_sync_records.concat(sync_records.map(&:id))
+            
+            # Update destination write status for failed records
+            SyncRecord.where(id: sync_records.map(&:id)).update_all( # rubocop:disable Rails/SkipsModelValidations
+              destination_write_status: :dest_failed,
+              destination_written_at: Time.current,
+              destination_error_message: e.message
+            )
           end
-        rescue Activities::LoaderActivity::FullRefreshFailed
-          raise
-        rescue StandardError
-          # Utils::ExceptionReporter.report(e, {
-          #                                   sync_run_id: sync_run.id
-          #                                 })
         end
+        
         update_sync_records_status(sync_run, successfull_sync_records, failed_sync_records)
         heartbeat(activity, sync_run)
       end
@@ -118,6 +162,17 @@ module ReverseEtl
       def update_sync_records_status(sync_run, successfull_sync_records, failed_sync_records)
         sync_run.sync_records.where(id: successfull_sync_records).update_all(status: "success") # rubocop:disable Rails/SkipsModelValidations
         sync_run.sync_records.where(id: failed_sync_records).update_all(status: "failed") # rubocop:disable Rails/SkipsModelValidations
+      end
+      
+      def extract_error_message(report)
+        return "Unknown error" unless report.tracking.respond_to?(:logs) && report.tracking.logs&.first&.message.present?
+        
+        begin
+          logs = JSON.parse(report.tracking.logs.first.message)
+          return logs.dig("error", "message") || logs.to_s
+        rescue JSON::ParserError
+          return report.tracking.logs.first.message.to_s
+        end
       end
 
       def heartbeat(activity, sync_run)
