@@ -104,3 +104,45 @@ export const getAllConnectors = async (): Promise<ConnectorListResponse> =>
     method: 'get',
     url: '/connectors',
   });
+
+// Interface for syncs by source response
+export interface SyncsBySourceResponse {
+  data: Array<{
+    id: string;
+    attributes: {
+      name: string;
+      source_id: string | number;
+      [key: string]: any;
+    };
+  }>;
+}
+
+export const getSyncsBySourceId = async (sourceId: string): Promise<SyncsBySourceResponse> =>
+  multiwovenFetch<null, SyncsBySourceResponse>({
+    method: 'get',
+    url: `/connectors/sources/${sourceId}/syncs`,
+  });
+
+// Response type for audience information
+export interface AudienceInfoResponse {
+  success: boolean;
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      id: string;
+      name: string;
+      description?: string;
+      created_at: string;
+      updated_at: string;
+    };
+  };
+};
+
+// Get audience information by ID
+export const getAudienceInfo = async (audienceId: string): Promise<AudienceInfoResponse> =>
+  multiwovenFetch<null, AudienceInfoResponse>({
+    method: 'get',
+    // Using a more general endpoint structure - this should be adjusted based on actual API
+    url: `/connectors/audiences/${audienceId}`,
+  });

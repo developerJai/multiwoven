@@ -7,13 +7,15 @@ module Api
       include Connectors
       include AuditLogger
       include ResourceLinkBuilder
-      before_action :set_connector, only: %i[show update destroy discover query_source execute_model]
+      before_action :set_connector, only: %i[show update destroy discover query_source execute_model source_syncs]
       # TODO: Enable this once we have query validation implemented for all the connectors
       # before_action :validate_query, only: %i[query_source]
       # TODO: Enable this for ai_ml sources
       before_action :validate_catalog, only: %i[query_source execute_model]
       after_action :event_logger
       after_action :create_audit_log, only: %i[create update destroy]
+      # Skip contract validation for source_syncs action
+      skip_before_action :validate_contract, only: [:source_syncs]
 
       def index
         @connectors = current_workspace.connectors
@@ -156,6 +158,69 @@ module Api
           render_error(
             message: "Connector is not a source",
             status: :unprocessable_content
+          )
+        end
+      end
+
+      # GET /connectors/sources/:id/syncs
+      # Returns all syncs associated with this source connector
+      def source_syncs
+        begin
+          Rails.logger.info "==== Starting source_syncs action with id: #{params[:id]} ===="
+          @connector = current_workspace.connectors.find(params[:id])
+          authorize @connector
+          
+          Rails.logger.info "Connector found: #{@connector.inspect}"
+          
+          if @connector.source?
+            # Get all syncs associated with this source connector
+            syncs = @connector.source_syncs
+            Rails.logger.info "Found #{syncs.count} syncs for this source"
+            
+            # Format the response to match the frontend expectations
+            response = syncs.map do |sync|
+              {
+                id: sync.id,
+                attributes: {
+                  name: sync.name,
+                  source_id: sync.source_id,
+                  destination_id: sync.destination_id,
+                  model_id: sync.model_id,
+                  sync_interval: sync.sync_interval,
+                  sync_mode: sync.sync_mode,
+                  status: sync.status,
+                  created_at: sync.created_at,
+                  updated_at: sync.updated_at
+                }
+              }
+            end
+            
+            Rails.logger.info "Returning #{response.length} syncs in response"
+            render json: { data: response }, status: :ok
+          else
+            Rails.logger.warn "Connector is not a source: #{@connector.connector_type}"
+            render_error(
+              message: "Connector is not a source",
+              status: :unprocessable_content
+            )
+          end
+        rescue ActiveRecord::RecordNotFound => e
+          Rails.logger.error "Record not found: #{e.message}"
+          render_error(
+            message: "Source connector not found",
+            status: :not_found
+          )
+        rescue Pundit::NotAuthorizedError => e
+          Rails.logger.error "Authorization error: #{e.message}"
+          render_error(
+            message: "You are not authorized to perform this action",
+            status: :forbidden
+          )
+        rescue StandardError => e
+          Rails.logger.error "Error in source_syncs: #{e.message}\n#{e.backtrace.join("\n")}"
+          render_error(
+            message: "An error occurred: #{e.message}",
+            status: :internal_server_error
           )
         end
       end
