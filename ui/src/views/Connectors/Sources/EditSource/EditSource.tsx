@@ -264,8 +264,14 @@ const [testedFormData, setTestedFormData] = useState<ConnectorConfiguration | nu
                     // Navigate to specific sync details page
                     navigate(`/activate/syncs/${syncId}`);
                   } else {
-                    // Fallback to old behavior if no sync ID is available
-                    navigate(`/syncs?audience_id=${formData.audience_id}`);
+                    // Show a toast notification when no syncs are found
+                    showToast({
+                      title: 'No syncs found',
+                      description: 'No syncs found for this source. Please create a sync first.',
+                      status: CustomToastStatus.Warning,
+                    });
+                    // Stay on the same page (refresh the current EditSource view)
+                    navigate(`/setup/sources/${sourceId}`);
                   }
                 }}
               >
