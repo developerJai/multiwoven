@@ -3,6 +3,8 @@ import {
   getConnectorDefinition,
   getConnectorInfo,
   updateConnector,
+  getSyncsBySourceId,
+  SyncsBySourceResponse,
 } from '@/services/connectors';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -32,10 +34,20 @@ const EditSource = (): JSX.Element => {
   const { sourceId } = useParams();
   const showToast = useCustomToast();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<unknown>(null);
+  // Define an interface for our configuration with audience_id and name
+interface ConnectorConfiguration {
+  audience_id?: string;
+  audience_name?: string;
+  name?: string;
+  [key: string]: any;
+}
 
-  const [isTestRunning, setIsTestRunning] = useState<boolean>(false);
-  const [testedFormData, setTestedFormData] = useState<unknown>(null);
+const [formData, setFormData] = useState<ConnectorConfiguration | null>(null);
+const [audienceName, setAudienceName] = useState<string>('');
+const [syncId, setSyncId] = useState<string>('');
+  
+const [isTestRunning, setIsTestRunning] = useState<boolean>(false);
+const [testedFormData, setTestedFormData] = useState<ConnectorConfiguration | null>(null);
 
   const { data: connectorInfoResponse, isLoading: isConnectorInfoLoading } = useQuery({
     queryKey: ['connectorInfo', sourceId, activeWorkspaceId],
@@ -59,8 +71,41 @@ const EditSource = (): JSX.Element => {
   const connectorSchema = connectorDefinitionResponse?.data?.connector_spec;
 
   useEffect(() => {
-    setFormData(connectorInfo?.attributes?.configuration);
+    // Type cast the configuration to our ConnectorConfiguration interface
+    const config = connectorInfo?.attributes?.configuration as ConnectorConfiguration;
+    setFormData(config);
+    
+    // Set audience name from the connector attributes (not from config)
+    if (connectorInfo?.attributes?.name) {
+      console.log('Found connector name:', connectorInfo.attributes.name);
+      setAudienceName(connectorInfo.attributes.name);
+    }
   }, [connectorDefinitionResponse, connectorInfoResponse]);
+
+  // Fetch associated sync for this source when connector info is available
+  useEffect(() => {
+    if (connectorInfo?.id) {
+      const sourceId = connectorInfo.id;
+      console.log('Fetching syncs for source ID:', sourceId);
+      
+      // Get all syncs associated with this source
+      getSyncsBySourceId(sourceId)
+        .then((response: SyncsBySourceResponse) => {
+          console.log('Syncs response:', response);
+          // If we have syncs, store the first one's ID
+          if (response.data && response.data.length > 0) {
+            const firstSync = response.data[0];
+            console.log('Found sync:', firstSync);
+            setSyncId(firstSync.id);
+          } else {
+            console.log('No syncs found for this source');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching syncs:', error);
+        });
+    }
+  }, [connectorInfo]);
 
   const handleOnSaveChanges = async () => {
     if (!connectorInfo?.attributes) return;
@@ -99,7 +144,7 @@ const EditSource = (): JSX.Element => {
     },
   });
 
-  const handleOnTestClick = async (formData: unknown) => {
+  const handleOnTestClick = async (formData: any) => {
     setIsTestRunning(true);
 
     if (!connectorInfo?.attributes) return;
@@ -143,7 +188,9 @@ const EditSource = (): JSX.Element => {
       });
     } finally {
       setIsTestRunning(false);
-      setTestedFormData(formData);
+      // Properly type the form data
+      const typedFormData = formData as ConnectorConfiguration;
+      setTestedFormData(typedFormData);
     }
   };
 
@@ -203,12 +250,40 @@ const EditSource = (): JSX.Element => {
           border='1px'
           borderColor='gray.400'
         >
+          {/* Display audience name if available */}
+          {formData?.audience_id && audienceName && (
+            <Box mb={4} bg="gray.200" p={3} borderRadius="md" display="flex" alignItems="center">
+              <Text fontWeight="medium" marginRight="2">Audience:</Text>
+              <Text 
+                fontWeight="bold" 
+                color="blue.600" 
+                cursor="pointer" 
+                textDecoration="underline"
+                onClick={() => {
+                  if (syncId) {
+                    // Navigate to specific sync details page
+                    navigate(`/activate/syncs/${syncId}`);
+                  } else {
+                    // Fallback to old behavior if no sync ID is available
+                    navigate(`/syncs?audience_id=${formData.audience_id}`);
+                  }
+                }}
+              >
+                {audienceName}
+              </Text>
+            </Box>
+          )}
           <JSONSchemaForm
             schema={connectorSchema?.connection_specification as RJSFSchema}
             uiSchema={generatedSchema}
             formData={formData}
             onSubmit={(formData: FormData) => handleOnTestClick(formData)}
-            onChange={(formData: FormData) => setFormData(formData)}
+            onChange={(newFormData: any) => {
+              const typedFormData = newFormData as ConnectorConfiguration;
+              setFormData(typedFormData);
+              // We don't need to update audience name on config changes
+              // since we're using the connector's name from attributes
+            }}
           >
             <FormFooter
               ctaName='Save Changes'

@@ -32,4 +32,8 @@ class ConnectorPolicy < ApplicationPolicy
   def execute_model?
     permitted?(:read, :connector)
   end
+  
+  def source_syncs?
+    permitted?(:read, :connector)
+  end
 end

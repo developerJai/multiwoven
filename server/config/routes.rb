@@ -49,6 +49,9 @@ Rails.application.routes.draw do
       resources :workspaces do
         resources :members, controller: 'workspace_members', only: [:index, :create]
       end
+      # Custom route for source syncs
+      get 'connectors/sources/:id/syncs', to: 'connectors#source_syncs', as: 'connector_source_syncs'
+      
       resources :connectors do
         member do
           get :discover
