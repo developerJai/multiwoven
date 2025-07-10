@@ -6,8 +6,10 @@ import {
   PopoverContent,
   PopoverTrigger,
   Text,
+  Spinner,
 } from '@chakra-ui/react';
 import { FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { deleteConnector } from '@/services/connectors';
 import { CustomToastStatus } from '@/components/Toast/index';
@@ -16,8 +18,10 @@ const SourceActions = ({ connectorType }: { connectorType: string }) => {
   const showToast = useCustomToast();
   const navigate = useNavigate();
   const { sourceId, destinationId } = useParams();
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDeleteConnector = async () => {
+    setIsDeleting(true);
     try {
       const connectorId = connectorType === 'sources' ? sourceId : destinationId;
       await deleteConnector(connectorId as string);
@@ -38,6 +42,8 @@ const SourceActions = ({ connectorType }: { connectorType: string }) => {
         position: 'bottom-right',
         isClosable: true,
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -85,10 +91,15 @@ const SourceActions = ({ connectorType }: { connectorType: string }) => {
               justifyContent='start'
               border={0}
               variant='shell'
+              isDisabled={isDeleting}
             >
-              <FiTrash2 color='#F45757' />
+              {isDeleting ? (
+                <Spinner size="sm" color="#F45757" mr={2} />
+              ) : (
+                <FiTrash2 color='#F45757' />
+              )}
               <Text size='sm' fontWeight='medium' ml={3} color='#C82727'>
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </Text>
             </Button>
           </PopoverBody>

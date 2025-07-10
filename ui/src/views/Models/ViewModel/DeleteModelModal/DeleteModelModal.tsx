@@ -12,8 +12,10 @@ import {
   ModalOverlay,
   Text,
   useDisclosure,
+  Spinner,
 } from '@chakra-ui/react';
 import { FiTrash2 } from 'react-icons/fi';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ExitWarningImage from '@/assets/images/ExitWarning.png';
 
@@ -22,6 +24,7 @@ import useCustomToast from '@/hooks/useCustomToast';
 
 const DeleteModelModal = (): JSX.Element => {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const params = useParams();
   const showToast = useCustomToast();
@@ -30,6 +33,7 @@ const DeleteModelModal = (): JSX.Element => {
   const model_id = params.id || '';
 
   async function handleDeleteModel() {
+    setIsDeleting(true);
     try {
       await deleteModelById(model_id);
       showToast({
@@ -49,6 +53,8 @@ const DeleteModelModal = (): JSX.Element => {
         duration: 5000,
         position: 'bottom-right',
       });
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -114,6 +120,10 @@ const DeleteModelModal = (): JSX.Element => {
                   onClick={handleDeleteModel}
                   backgroundColor='error.500'
                   _hover={{ bgColor: 'error.400' }}
+                  isLoading={isDeleting}
+                  loadingText="Deleting..."
+                  spinner={<Spinner color="white" size="sm" />}
+                  isDisabled={isDeleting}
                 >
                   Delete
                 </Button>
