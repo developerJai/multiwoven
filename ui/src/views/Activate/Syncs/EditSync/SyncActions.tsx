@@ -6,8 +6,10 @@ import {
   PopoverContent,
   PopoverTrigger,
   Text,
+  Spinner,
 } from '@chakra-ui/react';
 import { FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { deleteSync } from '@/services/syncs';
 import { CustomToastStatus } from '@/components/Toast/index';
@@ -17,8 +19,10 @@ const SyncActions = () => {
   const showToast = useCustomToast();
   const navigate = useNavigate();
   const { syncId } = useParams();
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDeleteSync = async () => {
+    setIsDeleting(true);
     try {
       await deleteSync(syncId as string);
       showToast({
@@ -38,6 +42,8 @@ const SyncActions = () => {
         position: 'bottom-right',
         isClosable: true,
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -85,10 +91,15 @@ const SyncActions = () => {
               justifyContent='start'
               border={0}
               variant='shell'
+              isDisabled={isDeleting}
             >
-              <FiTrash2 color='#F45757' />
+              {isDeleting ? (
+                <Spinner size="sm" color="#F45757" mr={2} />
+              ) : (
+                <FiTrash2 color='#F45757' />
+              )}
               <Text size='sm' fontWeight='medium' ml={3} color='#C82727'>
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </Text>
             </Button>
           </PopoverBody>
