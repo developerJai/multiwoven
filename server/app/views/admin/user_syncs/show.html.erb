@@ -90,13 +90,21 @@
             is_before_current = @current_status_index && index < @current_status_index
             is_current = @current_status_index && index == @current_status_index
           %>
-          <div class="status-item text-center">
+          <div class="status-item text-center" title="<%= sync_run_status_info(status) %>">
             <div class="status-circle <%= is_before_current ? 'bg-success' : (is_current ? 'bg-primary' : 'bg-warning') %>"></div>
             <div class="status-label">
               <% if is_current %>
                 <span class="current-label">Current</span>
               <% end %>
               <%= status.titleize %>
+              <div class="info-icon-container mt-1">
+                <i class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-trigger="click" data-bs-placement="bottom" data-bs-custom-class="status-tooltip" data-bs-title="<%= sync_run_status_info(status) %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                  </svg>
+                </i>
+              </div>
             </div>
           </div>
           
@@ -120,7 +128,7 @@
           <tr>
             <th>ID</th>
             <th>Status</th>
-            <th>Total Rows</th>
+            <th>Queried Rows (Fetched from source)</th>
             <th>Successful Rows</th>
             <th>Failed Rows</th>
             <th>Started At</th>
@@ -139,7 +147,7 @@
                     <%= sync_run.status.titleize %>
                   </span>
                 </td>
-                <td><%= sync_run.total_rows %></td>
+                <td><%= sync_run.total_query_rows %></td>
                 <td><%= sync_run.successful_rows %></td>
                 <td><%= sync_run.failed_rows %></td>
                 <td><%= sync_run.started_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
@@ -152,7 +160,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="9" class="text-center">No sync runs found</td>
+              <td colspan="11" class="text-center">No sync runs found</td>
             </tr>
           <% end %>
         </tbody>
@@ -202,4 +210,27 @@
     font-size: 11px;
     margin-bottom: 3px;
   }
+  .info-icon-container {
+    cursor: pointer;
+  }
+  .info-icon {
+    color: #6c757d;
+    font-size: 14px;
+  }
+  .info-icon:hover {
+    color: #0d6efd;
+  }
+  .status-tooltip {
+    max-width: 250px;
+  }
 </style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>

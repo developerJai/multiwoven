@@ -29,6 +29,7 @@ class SyncRun < ApplicationRecord
   belongs_to :model
   has_many :sync_records, dependent: :nullify
   has_many :sync_files, dependent: :destroy
+  has_many :sync_run_worker_logs, dependent: :destroy
 
   after_initialize :set_defaults, if: :new_record?
   after_discard :perform_post_discard_sync_run
@@ -159,6 +160,11 @@ class SyncRun < ApplicationRecord
   def duration_in_seconds
     now = Time.zone.now
     ((finished_at || now) - (started_at || now)).round
+  end
+
+  # Add a log message to the worker_logs array
+  def add_worker_log(log_message)
+    sync_run_worker_logs.create!(log_message: log_message)
   end
 
   delegate :active_alerts?, to: :workspace

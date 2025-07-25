@@ -3,7 +3,7 @@
 module Admin
   class UserSyncsController < Admin::BaseController
     before_action :find_user
-    before_action :find_sync, only: [:show, :sync_records]
+    before_action :find_sync, only: [:show, :sync_records, :sync_logs]
 
     def index
       @syncs = Sync.where(workspace_id: @user.workspace_users.pluck(:workspace_id))
@@ -73,6 +73,28 @@ module Admin
       
       # Pagination
       @sync_records = @sync_records.page(params[:page]).per(20)
+    end
+
+    def sync_logs
+      # @sync is already set by the find_sync before_action
+      @sync_run = @sync.sync_runs.find(params[:sync_run_id])
+      @sync_logs = @sync_run.sync_run_worker_logs
+      
+      # Apply sorting
+      sort_column = params[:sort] || 'created_at'
+      sort_direction = params[:direction] || 'asc'
+      @sync_logs = @sync_logs.order("#{sort_column} #{sort_direction}")
+      
+      # Filter by log level if provided
+      if params[:log_message].present?
+        @sync_logs = @sync_logs.where("log_message ILIKE ?", "%#{params[:log_message]}%")
+      end
+      
+      # Get total count before pagination
+      @total_logs_count = @sync_logs.count
+      
+      # Pagination
+      @sync_logs = @sync_logs.page(params[:page]).per(50)
     end
 
     private

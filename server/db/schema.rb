@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_07_03_005800) do
+ActiveRecord::Schema[7.1].define(version: 2025_07_25_091555) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -140,12 +140,12 @@ ActiveRecord::Schema[7.1].define(version: 2025_07_03_005800) do
   create_table "components", id: :string, force: :cascade do |t|
     t.integer "workspace_id", null: false
     t.uuid "workflow_id", null: false
+    t.string "name"
     t.integer "component_type", null: false
     t.jsonb "configuration", null: false
     t.jsonb "position", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "name"
     t.jsonb "data", default: {}, null: false
     t.integer "component_category", default: 0, null: false
   end
@@ -473,6 +473,14 @@ ActiveRecord::Schema[7.1].define(version: 2025_07_03_005800) do
     t.index ["sync_id", "primary_key"], name: "index_sync_records_on_sync_id_and_primary_key", unique: true
   end
 
+  create_table "sync_run_worker_logs", force: :cascade do |t|
+    t.text "log_message"
+    t.bigint "sync_run_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sync_run_id"], name: "index_sync_run_worker_logs_on_sync_run_id"
+  end
+
   create_table "sync_runs", force: :cascade do |t|
     t.integer "sync_id"
     t.integer "status"
@@ -681,6 +689,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_07_03_005800) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "sync_run_worker_logs", "sync_runs"
   add_foreign_key "taggings", "tags"
   add_foreign_key "workflows", "workspaces", validate: false
   add_foreign_key "workspace_users", "roles"

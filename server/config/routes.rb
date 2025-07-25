@@ -21,6 +21,7 @@ Rails.application.routes.draw do
       resources :syncs, controller: 'user_syncs', only: [:index, :show] do
         member do
           get 'sync_run/:sync_run_id/records', to: 'user_syncs#sync_records', as: 'records'
+          get 'sync_run/:sync_run_id/logs', to: 'user_syncs#sync_logs', as: 'logs'
         end
       end
     end

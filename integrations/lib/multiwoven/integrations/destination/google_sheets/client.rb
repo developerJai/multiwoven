@@ -10,7 +10,7 @@ module Multiwoven
           prepend Multiwoven::Integrations::Core::Fullrefresher
           prepend Multiwoven::Integrations::Core::RateLimiter
           MAX_CHUNK_SIZE = 10_000
-
+          
           def check_connection(connection_config)
             connection_config = connection_config.with_indifferent_access
             authorize_client(connection_config)
@@ -34,6 +34,10 @@ module Multiwoven
           end
 
           def write(sync_config, records, action = "create")
+            if sync_config.respond_to?(:sync_run_id) && sync_config.sync_run_id
+              sync_run = SyncRun.find_by(id: sync_config.sync_run_id)
+              sync_run&.add_worker_log("GoogleSheets: write - Started processing #{records.count} records")
+            end
             setup_write_environment(sync_config, action)
             process_record_chunks(records, sync_config)
           rescue StandardError => e
@@ -69,6 +73,11 @@ module Multiwoven
           def authorize_client(config)
             credentials = config[:credentials_json]
             @client = Google::Apis::SheetsV4::SheetsService.new
+            
+            # Configure longer timeouts for large operations
+            @client.client_options.open_timeout_sec = 60  # Connection open timeout
+            @client.client_options.read_timeout_sec = 300 # Read timeout for API operations
+            
             @client.authorization = Google::Auth::ServiceAccountCredentials.make_creds(
               json_key_io: StringIO.new(credentials.to_json),
               scope: GOOGLE_SHEETS_SCOPE
@@ -110,7 +119,7 @@ module Multiwoven
           end
 
           def spread_sheet_value(header_range)
-            @spread_sheet_value ||= @client.get_spreadsheet_values(@spreadsheet_id, header_range).values
+            @client.get_spreadsheet_values(@spreadsheet_id, header_range).values
           end
 
           def generate_header_range(sheet_name, last_column_index)
@@ -156,71 +165,53 @@ module Multiwoven
             log_message_array = []
             write_success = 0
             write_failure = 0
-            detailed_errors = []
-
-            records.each_slice(MAX_CHUNK_SIZE) do |chunk|
+            
+            total_records = records.count
+            total_batches = (total_records.to_f / MAX_CHUNK_SIZE).ceil
+            
+            records.each_slice(MAX_CHUNK_SIZE).with_index(1) do |chunk, batch_number|
               begin
-                values = prepare_chunk_values(chunk, sync_config.stream)
-                request, response = *update_sheet_values(values, sync_config.stream.name)
+                add_worker_log(sync_config, 'process_record_chunks', "Processing chunk #{batch_number}/#{total_batches} with #{chunk.count} records")
                 
-                # Check if the response indicates success
-                if response && response.total_updated_cells && response.total_updated_cells > 0
-                  write_success += values.size
-                  log_message_array << log_request_response("info", request, response)
-                else
-                  write_failure += chunk.size
-                  error_message = "No cells were updated in Google Sheets"
-                  detailed_errors << {
-                    chunk_size: chunk.size,
-                    error: error_message,
-                    response: response&.to_h
-                  }
-                  log_message_array << log_request_response("error", request, error_message)
-                end
-              rescue Google::Apis::ClientError => e
-                # Handle Google API specific errors with detailed information
-                write_failure += chunk.size
-                error_details = {
-                  chunk_size: chunk.size,
-                  error: e.message,
-                  status_code: e.status_code,
-                  reason: e.reason
-                }
-                detailed_errors << error_details
-                log_message_array << log_request_response("error", request, "Google API Error: #{e.message}, Status: #{e.status_code}, Reason: #{e.reason}")
-              rescue Google::Apis::RateLimitError => e
-                # Handle rate limit errors specifically
-                write_failure += chunk.size
-                error_details = {
-                  chunk_size: chunk.size,
-                  error: "Rate limit exceeded: #{e.message}",
-                  retry_after: e.header['retry-after']
-                }
-                detailed_errors << error_details
-                log_message_array << log_request_response("error", request, "Rate limit exceeded: #{e.message}")
+                # Process the chunk
+                values = prepare_chunk_values(chunk, sync_config.stream, sync_config)
+                
+                # Update sheet values
+                request, response = *update_sheet_values(values, sync_config.stream.name, sync_config)
+                add_worker_log(sync_config, 'process_record_chunks', "Completed processing chunk #{batch_number}/#{total_batches}")
+                
+                # Update counters and logs
+                write_success += values.size
+                log_message_array << log_request_response("info", request, response)
               rescue StandardError => e
-                # Handle other errors
+                add_worker_log(sync_config, 'process_record_chunks', "Exception in batch processing: #{e.message}")
+                handle_exception(e, {
+                                   context: "GOOGLE_SHEETS:RECORD:WRITE:EXCEPTION",
+                                   type: "error",
+                                   sync_id: sync_config.sync_id,
+                                   sync_run_id: sync_config.sync_run_id
+                                 })
                 write_failure += chunk.size
-                error_details = {
-                  chunk_size: chunk.size,
-                  error: e.message,
-                  backtrace: e.backtrace&.first(3)
-                }
-                detailed_errors << error_details
                 log_message_array << log_request_response("error", request, e.message)
               end
             end
-            
-            # Include detailed error information in the tracking message
-            tracking_message(write_success, write_failure, log_message_array, detailed_errors)
+            tracking_message(write_success, write_failure, log_message_array)
           end
 
           # We need to format the data to adhere to google sheets API format. This converts the sync mapped data to 2D array format expected by google sheets API
-          def prepare_chunk_values(chunk, stream)
-            last_column_index = spread_sheet_value(stream.name).count
-            fields = fetch_column_names(stream.name, last_column_index)
+          def prepare_chunk_values(chunk, stream, sync_config)
+            add_worker_log(sync_config, 'prepare_chunk_values', "Starting data preparation")
+            
+            # Get the sheet properties to determine column count
+            sheet = @client.get_spreadsheet(@spreadsheet_id).sheets.find { |s| s.properties.title == stream.name }
+            last_column_index = sheet.properties.grid_properties.column_count
+            add_worker_log(sync_config, 'prepare_chunk_values', "Sheet column count: #{last_column_index}")
 
-            chunk.map do |row|
+            # Get only the header row columns
+            fields = fetch_column_names(stream.name, last_column_index)
+            add_worker_log(sync_config, 'prepare_chunk_values', "Retrieved #{fields.size} fields from header row")
+            
+            chunk_values = chunk.map do |row|
               row_values = Array.new(fields.size, nil)
               row.each do |key, value|
                 index = fields.index(key.to_s)
@@ -228,20 +219,77 @@ module Multiwoven
               end
               row_values
             end
+            
+            add_worker_log(sync_config, 'prepare_chunk_values', "Prepared #{chunk_values.size} rows for writing")
+            chunk_values
           end
 
-          def update_sheet_values(values, stream_name)
-            row_count = spread_sheet_value(stream_name).count
-            range = "#{stream_name}!A#{row_count + 1}"
+          def update_sheet_values(values, stream_name, sync_config)
+            start_row = allocate_rows_for_chunk(stream_name, values.size, sync_config)
+            end_row = start_row + values.size - 1
+            
+            add_worker_log(sync_config, 'update_sheet_values', "Writing to rows #{start_row} to #{end_row}")
+            # Fix range formatting to use proper column letter
+            last_column_letter = column_index_to_letter(values.first.size)
+            range = "#{stream_name}!A#{start_row}:#{last_column_letter}#{end_row}"
+            add_worker_log(sync_config, 'update_sheet_values', "Range: #{range}")
+            
             value_range = Google::Apis::SheetsV4::ValueRange.new(range: range, values: values)
-
             batch_update_request = Google::Apis::SheetsV4::BatchUpdateValuesRequest.new(
               value_input_option: "RAW",
               data: [value_range]
             )
 
+            add_worker_log(sync_config, 'update_sheet_values', "Sending batch update request")
+
+            # Execute the batch update request
             response = @client&.batch_update_values(@spreadsheet_id, batch_update_request)
+            
+            # Log response details
+            if response
+              add_worker_log(sync_config, 'update_sheet_values', "Updated #{response.total_updated_cells} cells across #{response.total_updated_rows} rows")
+            end
+            
             [batch_update_request, response]
+          end
+
+          # Thread-safe row allocation to prevent race conditions in parallel writes
+          def allocate_rows_for_chunk(sheet_name, chunk_size, sync_config)
+              # Initialize row offset from sheet state on first access
+              if @current_row_offset.nil?
+                @current_row_offset = get_sheet_row_count(sheet_name, sync_config) + 1 # +1 because we start after the last row
+                add_worker_log(sync_config, 'allocate_rows_for_chunk', "Initialized row offset to #{@current_row_offset}")
+              end
+
+              # Allocate and return the starting row for this chunk
+              start_row = @current_row_offset
+              @current_row_offset += chunk_size
+              add_worker_log(sync_config, 'allocate_rows_for_chunk', "Allocated rows #{start_row} to #{@current_row_offset-1}")
+              start_row
+          end
+
+          # Get the current row count for a sheet (without caching)
+          def get_sheet_row_count(sheet_name, sync_config)
+            add_worker_log(sync_config, 'get_sheet_row_count', "Retrieving current row count")
+            # Get all values in the sheet (up to a reasonable limit)
+            # Using a large range like A:Z will return all data in the sheet
+            range = "#{sheet_name}!A:Z"
+            begin
+              values = @client.get_spreadsheet_values(@spreadsheet_id, range).values
+              
+              # Return the count of rows (0 if empty)
+              row_count = values ? values.size : 0
+              add_worker_log(sync_config, 'get_sheet_row_count', "Current row count: #{row_count}")
+              row_count
+            rescue StandardError => e
+              add_worker_log(sync_config, 'get_sheet_row_count', "Error getting row count: #{e.message}")
+              0 # Return 0 if there's an error
+            end
+          end
+
+          # Helper to generate column range (e.g., A:C for 3 columns)
+          def column_range(column_count)
+            column_index_to_letter(column_count)
           end
 
           def load_catalog
@@ -272,26 +320,20 @@ module Multiwoven
               meta: { detail: message }
             ).to_multiwoven_message
           end
-          
-          # Enhanced tracking message with detailed error information
-          def tracking_message(success, failure, log_message_array, detailed_errors = [])
-            TrackingMessage.new(
-              type: "write",
-              emitted_at: Time.now.to_i,
-              success: success,
-              failure: failure,
-              logs: [
-                LogMessage.new(
-                  level: "info",
-                  message: {
-                    success: success,
-                    failure: failure,
-                    log_messages: log_message_array,
-                    detailed_errors: detailed_errors
-                  }.to_json
-                )
-              ]
-            ).to_multiwoven_message
+
+          # Helper method to add worker logs with file path context
+          def add_worker_log(sync_config, calling_from, message)
+            return unless sync_config&.respond_to?(:sync_run_id) && sync_config&.sync_run_id
+
+            sync_run = SyncRun.find_by(id: sync_config.sync_run_id)
+            return unless sync_run
+
+            # Format the log message to show it's from the Google Sheets client
+            log_message = "GoogleSheets: #{calling_from} - #{message}"
+
+            # Reload the sync_run to get the latest worker_logs before appending
+            sync_run.reload
+            sync_run.add_worker_log(log_message)
           end
         end
       end
