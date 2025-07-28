@@ -1,0 +1,204 @@
+<%= render 'admin/user_syncs/loader' %>
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <% if @user %>
+      <li class="breadcrumb-item"><%= link_to "Users", admin_users_path %></li>
+      <li class="breadcrumb-item"><%= link_to @user.name, admin_user_path(@user) %></li>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_user_syncs_path(@user) %></li>
+      <li class="breadcrumb-item"><%= link_to "Sync ##{@sync.id}", admin_user_sync_path(@user, @sync) %></li>
+    <% else %>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_syncs_path %></li>
+      <li class="breadcrumb-item"><%= link_to "Sync ##{@sync.id}", admin_sync_path(@sync) %></li>
+    <% end %>
+
+    <li class="breadcrumb-item active" aria-current="page">Sync Run / Records</li>
+  </ol>
+</nav>
+
+<h1>Sync Records for Sync Run #<%= @sync_run.id %></h1>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Sync Run Details</h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>ID:</strong> <%= @sync_run.id %></p>
+        <p><strong>Status:</strong> 
+          <span class="badge bg-<%= sync_run_status_color(@sync_run.status) %>">
+            <%= @sync_run.status.titleize %>
+          </span>
+        </p>
+        <p><strong>Total Rows:</strong> <%= @sync_run.total_rows %></p>
+        <p><strong>Successful Rows:</strong> <%= @sync_run.successful_rows %></p>
+        <p><strong>Failed Rows:</strong> <%= @sync_run.failed_rows %></p>
+      </div>
+      <div class="col-md-6">
+        <p><strong>Started At:</strong> <%= @sync_run.started_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></p>
+        <p><strong>Finished At:</strong> <%= @sync_run.finished_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></p>
+        <p><strong>Duration:</strong> <%= @sync_run.started_at && @sync_run.finished_at ? distance_of_time_in_words(@sync_run.started_at, @sync_run.finished_at) : 'N/A' %></p>
+        <p><strong>Sync Run Type:</strong> <%= @sync_run.sync_run_type.titleize %></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Filters</h5>
+  </div>
+  <div class="card-body">
+    <%= form_with url: @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: @sync_run.id), method: :get, class: 'row g-3', local: true do |f| %>
+      <div class="col-md-3">
+        <label for="status" class="form-label">Status</label>
+        <%= f.select :status, 
+                    options_for_select([['All', ''], ['Success', 'success'], ['Failed', 'failed']], 
+                                       selected: params[:status]), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-3">
+        <label for="destination_write_status" class="form-label">Destination Write Status</label>
+        <%= f.select :destination_write_status, 
+                    options_for_select([
+                      ['All', ''], 
+                      ['Not Started', 'dest_not_started'], 
+                      ['In Progress', 'dest_in_progress'], 
+                      ['Written', 'dest_written'], 
+                      ['Failed', 'dest_failed'],
+                      ['Skipped', 'dest_skipped']
+                    ], selected: params[:destination_write_status]), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-2">
+        <label for="sort" class="form-label">Sort By</label>
+        <%= f.select :sort, 
+                    options_for_select([
+                      ['Created At', 'created_at'], 
+                      ['Updated At', 'updated_at'],
+                      ['Destination Written At', 'destination_written_at']
+                    ], selected: params[:sort] || 'created_at'), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-2">
+        <label for="direction" class="form-label">Direction</label>
+        <%= f.select :direction, 
+                    options_for_select([['Descending', 'desc'], ['Ascending', 'asc']], 
+                                       selected: params[:direction] || 'desc'), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <%= f.submit 'Apply', class: 'btn btn-primary me-2' %>
+        <%= link_to 'Clear', @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-secondary' %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Sync Records</h5>
+    <div class="d-flex align-items-center gap-2">
+      <%= link_to 'View Logs', @user ? logs_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_logs_path(@sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-primary btn-sm' %>
+      <span class="badge bg-primary"><%= @total_records_count %> Records Total</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Record Data</th>
+            <th>Status</th>
+            <th>Destination Status</th>
+            <th>Error Message</th>
+            <th>Created At</th>
+            <th>Written At</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sync_records.any? %>
+            <% @sync_records.each do |record| %>
+              <tr>
+                <td><%= record.id %></td>
+                <td>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#record-<%= record.id %>" aria-expanded="false">
+                    View Data
+                  </button>
+                  <div class="collapse mt-2" id="record-<%= record.id %>">
+                    <div class="card card-body">
+                      <pre class="mb-0"><%= JSON.pretty_generate(record.record) rescue record.record.to_s %></pre>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <% if record.respond_to?(:status) %>
+                    <span class="badge bg-<%= record.status == 'success' ? 'success' : 'danger' %>">
+                      <%= record.status.titleize rescue 'N/A' %>
+                    </span>
+                  <% else %>
+                    <span>N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if record.respond_to?(:destination_write_status) %>
+                    <% status_color = case record.destination_write_status
+                                      when 'destination_write_status_dest_written' then 'success'
+                                      when 'destination_write_status_dest_failed' then 'danger'
+                                      when 'destination_write_status_dest_skipped' then 'warning'
+                                      when 'destination_write_status_dest_in_progress' then 'info'
+                                      else 'secondary'
+                                      end %>
+                    <span class="badge bg-<%= status_color %>">
+                      <%= record.destination_write_status.to_s.sub('destination_write_status_dest_', '').titleize %>
+                    </span>
+                  <% else %>
+                    <span class="badge bg-secondary">Not Available</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if record.respond_to?(:destination_error_message) && record.destination_error_message.present? %>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#error-<%= record.id %>" aria-expanded="false">
+                      View Error
+                    </button>
+                    <div class="collapse mt-2" id="error-<%= record.id %>">
+                      <div class="card card-body">
+                        <pre class="mb-0"><%= record.destination_error_message %></pre>
+                      </div>
+                    </div>
+                  <% elsif record.respond_to?(:logs) && record.logs.present? %>
+                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#logs-<%= record.id %>" aria-expanded="false">
+                      View Logs
+                    </button>
+                    <div class="collapse mt-2" id="logs-<%= record.id %>">
+                      <div class="card card-body">
+                        <pre class="mb-0"><%= JSON.pretty_generate(record.logs) rescue record.logs.to_s %></pre>
+                      </div>
+                    </div>
+                  <% else %>
+                    <span>None</span>
+                  <% end %>
+                </td>
+                <td><%= record.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+                <td><%= record.destination_written_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="7" class="text-center">No sync records found</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <%= paginate @sync_records %>
+  </div>
+</div>
+
+<div class="mt-3">
+  <%= link_to 'Back to Sync Runs', @user ? admin_user_sync_path(@user, @sync) : admin_sync_path(@sync), class: 'btn btn-secondary' %>
+</div>
