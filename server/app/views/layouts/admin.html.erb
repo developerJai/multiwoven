@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
       .sidebar {
         min-height: 100vh;
@@ -45,11 +45,11 @@
               <h5 class="text-white">Audience Lab Admin</h5>
             </div>
             <ul class="nav flex-column flex-grow-1">
-              <!--  <li class="nav-item">
-                          <%#= link_to "Dashboard", admin_root_path, class: "nav-link #{current_page?(admin_root_path) ? 'active' : ''}" %>
-                        </li>-->
               <li class="nav-item">
-                <%= link_to "Users", admin_users_path, class: "nav-link #{controller_name == 'users' ? 'active' : ''}" %>
+                <%= link_to "Users", admin_users_path, class: "nav-link #{controller_name == 'users' || (controller_name == 'user_syncs' && ["index", "show", "sync_records", "sync_logs"].include?(action_name)) ? 'active' : ''}" %>
+              </li>
+              <li class="nav-item">
+                <%= link_to "Syncs", admin_syncs_path, class: "nav-link #{controller_name == 'user_syncs' && ["syncs_index", "sync_show", "sync_run_records", "sync_run_logs"].include?(action_name) ? 'active' : ''}" %>
               </li>
               <li class="nav-item">
                 <%= link_to "Settings", admin_setting_index_path, class: "nav-link #{controller_name == 'settings' ? 'active' : ''}" %>
@@ -83,6 +83,6 @@
         <%= yield %>
       </div>
     <% end %>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

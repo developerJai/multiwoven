@@ -25,6 +25,11 @@ Rails.application.routes.draw do
         end
       end
     end
+
+    get 'syncs', to: 'user_syncs#syncs_index'
+    get 'syncs/:id', to: 'user_syncs#sync_show', as: 'sync'
+    get 'syncs/:id/sync_run/:sync_run_id/records', to: 'user_syncs#sync_run_records', as: 'sync_run_records'
+
     root 'users#index'
     get 'setting/index', to: 'settings#index'
     post 'update/password' => 'settings#update_password', as: 'update_password'

@@ -95,19 +95,6 @@
                         <% end %>
                      </div>
                   </div>
-                  <div class="mb-3 row">
-                     <div class="col-5">
-                        <strong>Simulate Req Token:</strong>
-                     </div>
-                     <div class="col-7">
-                        <% if @user.simulate_req_token.present? %>
-                        <code class="text-break"><%= @user.simulate_req_token %></code>
-                        <button class="btn btn-sm btn-outline-secondary mt-1" onclick="copyToClipboard('<%= @user.simulate_req_token %>')">Copy</button>
-                        <% else %>
-                        <span class="text-muted">Not set</span>
-                        <% end %>
-                     </div>
-                  </div>
                </div>
             </div>
          </div>
@@ -140,13 +127,13 @@
                            <td><%= @workspace_user_counts[workspace_user.workspace_id] %> members</td>
                            <td>
                               <a href="#" class="ml-2 text-blue-600 underline"
-                                 onclick="showEmailModal('modal-<%= workspace_user.workspace.id %>')">View</a>
+                                 onclick="showWorkspaceModal('modal-<%= workspace_user.workspace.id %>')">View</a>
                               <button onclick="openModal(<%= workspace_user.workspace.id %>)"
                                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Add Member</button>
                            </td>
                         </tr>
                         <div id="modal-<%= workspace_user.workspace.id %>"
-                           class="email-modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden z-50">
+                           class="workspace-modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden z-50">
                            <div class="bg-white p-6 rounded shadow-lg w-1/3">
                               <h2 class="text-lg font-semibold mb-4">Workspace: <%= workspace_user.workspace.name %></h2>
                               <div class="space-y-2">
@@ -174,7 +161,7 @@
             </div>
          </div>
       </div>
-      <div id="emailModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+      <div id="workspaceModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
          <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
             <!-- Close button -->
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-black text-xl font-bold">
@@ -196,37 +183,18 @@
 </div>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-function copyToClipboard(text) {
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textarea);
-  // Show a temporary success message
-  const btn = event.target;
-  const originalText = btn.textContent;
-  btn.textContent = 'Copied!';
-  btn.classList.remove('btn-outline-secondary');
-  btn.classList.add('btn-success');
-  setTimeout(() => {
-    btn.textContent = originalText;
-    btn.classList.remove('btn-success');
-    btn.classList.add('btn-outline-secondary');
-  }, 2000);
-}
   function openModal(workspaceId) {
-    document.getElementById('emailModal').classList.remove('hidden');
+    document.getElementById('workspaceModal').classList.remove('hidden');
     document.getElementById('workspace_id_field').value = workspaceId;
   }
   function closeModal() {
-    document.getElementById('emailModal').classList.add('hidden');
+    document.getElementById('workspaceModal').classList.add('hidden');
   }
-  function showEmailModal(id) {
-    document.querySelectorAll('.email-modal').forEach(m => m.classList.add('hidden'));
+  function showWorkspaceModal(id) {
+    document.querySelectorAll('.workspace-modal').forEach(m => m.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
   }
   function closeAllModals() {
-    document.querySelectorAll('.email-modal').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.workspace-modal').forEach(m => m.classList.add('hidden'));
   }
 </script>

@@ -4,15 +4,21 @@
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><%= link_to "Users", admin_users_path %></li>
-    <li class="breadcrumb-item"><%= link_to @user.name, admin_user_path(@user) %></li>
-    <li class="breadcrumb-item"><%= link_to "Syncs", admin_user_syncs_path(@user) %></li>
-    <li class="breadcrumb-item"><%= link_to "Sync ##{@sync.id}", admin_user_sync_path(@user, @sync) %></li>
-    <li class="breadcrumb-item active" aria-current="page">Sync Run #<%= @sync_run.id %> Records</li>
+    <% if @user %>
+      <li class="breadcrumb-item"><%= link_to "Users", admin_users_path %></li>
+      <li class="breadcrumb-item"><%= link_to @user.name, admin_user_path(@user) %></li>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_user_syncs_path(@user) %></li>
+      <li class="breadcrumb-item"><%= link_to "Sync ##{@sync.id}", admin_user_sync_path(@user, @sync) %></li>
+    <% else %>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_syncs_path %></li>
+      <li class="breadcrumb-item"><%= link_to "Sync ##{@sync.id}", admin_sync_path(@sync) %></li>
+    <% end %>
+
+    <li class="breadcrumb-item active" aria-current="page">Sync Run / Records</li>
   </ol>
 </nav>
 
-<h1>Sync Records for Run #<%= @sync_run.id %></h1>
+<h1>Sync Records for Sync Run #<%= @sync_run.id %></h1>
 
 <div class="card mb-4">
   <div class="card-header">
@@ -46,7 +52,7 @@
     <h5 class="mb-0">Filters</h5>
   </div>
   <div class="card-body">
-    <%= form_with url: records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id), method: :get, class: 'row g-3', local: true do |f| %>
+    <%= form_with url: @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: @sync_run.id), method: :get, class: 'row g-3', local: true do |f| %>
       <div class="col-md-3">
         <label for="status" class="form-label">Status</label>
         <%= f.select :status, 
@@ -85,8 +91,8 @@
                     {}, class: 'form-select' %>
       </div>
       <div class="col-md-2 d-flex align-items-end">
-        <%= f.submit 'Apply Filters', class: 'btn btn-primary me-2' %>
-        <%= link_to 'Clear', records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-secondary' %>
+        <%= f.submit 'Apply', class: 'btn btn-primary me-2' %>
+        <%= link_to 'Clear', @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-secondary' %>
       </div>
     <% end %>
   </div>
@@ -96,7 +102,7 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Sync Records</h5>
     <div class="d-flex align-items-center gap-2">
-      <%= link_to 'View Logs', logs_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-primary btn-sm' %>
+      <%= link_to 'View Logs', @user ? logs_admin_user_sync_path(@user, @sync, sync_run_id: @sync_run.id) : admin_sync_run_logs_path(@sync, sync_run_id: @sync_run.id), class: 'btn btn-outline-primary btn-sm' %>
       <span class="badge bg-primary"><%= @total_records_count %> Records Total</span>
     </div>
   </div>
@@ -196,5 +202,5 @@
 </div>
 
 <div class="mt-3">
-  <%= link_to 'Back to Sync Runs', admin_user_sync_path(@user, @sync), class: 'btn btn-secondary' %>
+  <%= link_to 'Back to Sync Runs', @user ? admin_user_sync_path(@user, @sync) : admin_sync_path(@sync), class: 'btn btn-secondary' %>
 </div>

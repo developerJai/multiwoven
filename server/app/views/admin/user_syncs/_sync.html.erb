@@ -1,0 +1,274 @@
+<%= render 'admin/user_syncs/loader' %>
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <% if @user %>
+      <li class="breadcrumb-item"><%= link_to "Users", admin_users_path %></li>
+      <li class="breadcrumb-item"><%= link_to @user.name, admin_user_path(@user) %></li>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_user_syncs_path(@user) %></li>
+    <% else %>
+      <li class="breadcrumb-item"><%= link_to "Syncs", admin_syncs_path %></li>
+    <% end %>
+    <li class="breadcrumb-item active" aria-current="page">Sync #<%= @sync.id %> / Sync Runs</li>
+  </ol>
+</nav>
+
+<h3>Sync Runs for <%= @sync.name %></h3>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Sync Schedule Type: <%= @sync.schedule_type.titleize %>
+    <span class="badge bg-<%= sync_status_color(@sync.status) %> float-end">
+        Status: <%= @sync.status.titleize %>
+    </span>
+    </h5>
+    
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4">
+        <p><strong>Stream Name:</strong> <%= @sync.stream_name %></p>
+        <p><strong>Workspace:</strong> 
+        <a href="#" class="ml-2 text-blue-600 underline"
+        class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalWorkspace"><%= @sync.workspace.name rescue 'N/A' %></a> </p>
+        <!-- Modal -->
+        <div class="modal fade" id="modalWorkspace" tabindex="-1" role="dialog" aria-labelledby="modalWorkspaceLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalWorkspaceLabel">Workspace: <%=@sync.workspace.name rescue 'N/A' %></h5>
+              </div>
+              <div class="modal-body">
+                <% @sync.workspace.users.each do |u| %>
+                    <div class="flex justify-between bg-gray-100 p-2 rounded">
+                    <div class="text-gray-800 font-medium"><%= u.name.present? ? u.name : "N/A" %> 
+                       <span class="text-gray-600 small">(<%= u.email %>)</span>
+                        <span class="float-end text-white"><a href="<%= admin_user_path(u) %>">View</a></span>
+                    </div>
+                    </div>
+                <% end %>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <p><strong>Source:</strong> <%= @sync.source.name rescue 'N/A' %></p>
+        <p><strong>Destination:</strong> <%= @sync.destination.name rescue 'N/A' %></p>
+      </div>
+      <div class="col-md-4">
+        <p><strong>Created At:</strong> <%= @sync.created_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+        <p><strong>Updated At:</strong> <%= @sync.updated_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Filters</h5>
+  </div>
+  <div class="card-body">
+    <%= form_with url: @user ? admin_user_sync_path(@user, @sync) : admin_sync_path(@sync), method: :get, class: 'row g-3', local: true do |f| %>
+      <div class="col-md-3">
+        <label for="status" class="form-label">Status</label>
+        <%= f.select :status, 
+                    options_for_select([['All', ''], ['Pending', 'pending'], ['Started', 'started'], 
+                                       ['Querying', 'querying'], ['Queued', 'queued'], ['In Progress', 'in_progress'],
+                                       ['Success', 'success'], ['Paused', 'paused'], ['Failed', 'failed'], ['Canceled', 'canceled']], 
+                                       selected: params[:status]), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-3">
+        <label for="sort" class="form-label">Sort By</label>
+        <%= f.select :sort, 
+                    options_for_select([['Created At', 'created_at'], ['Updated At', 'updated_at'], 
+                                       ['Total Rows', 'total_rows'], ['Successful Rows', 'successful_rows']], 
+                                       selected: params[:sort] || 'created_at'), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-3">
+        <label for="direction" class="form-label">Direction</label>
+        <%= f.select :direction, 
+                    options_for_select([['Descending', 'desc'], ['Ascending', 'asc']], 
+                                       selected: params[:direction] || 'desc'), 
+                    {}, class: 'form-select' %>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <%= f.submit 'Apply', class: 'btn btn-primary me-2' %>
+        <%= link_to 'Clear', @user ? admin_user_sync_path(@user, @sync) : admin_sync_path(@sync), class: 'btn btn-outline-secondary' %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Status Sequence</h5>
+  </div>
+  <div class="card-body">
+    <div class="status-sequence">
+      <div class="d-flex justify-content-between align-items-center">
+        <% @status_sequence&.each_with_index do |status, index| %>
+          <% 
+            # Safe comparison with nil check
+            is_before_current = @current_status_index && index < @current_status_index
+            is_current = @current_status_index && index == @current_status_index
+          %>
+          <div class="status-item text-center" title="<%= sync_run_status_info(status) %>">
+            <div class="status-circle <%= is_before_current ? 'bg-success' : (is_current ? 'bg-primary' : 'bg-warning') %>"></div>
+            <div class="status-label">
+              <% if is_current %>
+                <span class="current-label">Current</span>
+              <% end %>
+              <%= status.titleize %>
+              <div class="info-icon-container mt-1">
+                <i class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-trigger="click" data-bs-placement="bottom" data-bs-custom-class="status-tooltip" data-bs-title="<%= sync_run_status_info(status) %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                  </svg>
+                </i>
+              </div>
+            </div>
+          </div>
+          
+          <% if index < @status_sequence.length - 1 %>
+            <div class="status-line <%= is_before_current ? 'bg-success' : 'bg-warning' %>"></div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Sync Runs</h5>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Queried Rows (Fetched from source)</th>
+            <th>Successful Rows</th>
+            <th>Failed Rows</th>
+            <th>Started At</th>
+            <th>Finished At</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sync_runs.any? %>
+            <% @sync_runs.each do |sync_run| %>
+              <tr>
+                <td><%= sync_run.id %></td>
+                <td>
+                  <span class="badge bg-<%= sync_run_status_color(sync_run.status) %>">
+                    <%= sync_run.status.titleize %>
+                  </span>
+                </td>
+                <td><%= sync_run.total_query_rows %></td>
+                <td><%= sync_run.successful_rows %></td>
+                <td><%= sync_run.failed_rows %></td>
+                <td><%= sync_run.started_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
+                <td><%= sync_run.finished_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
+                <td><%= sync_run.started_at && sync_run.finished_at ? distance_of_time_in_words(sync_run.started_at, sync_run.finished_at) : 'N/A' %></td>
+                <td>
+                  <%= link_to 'Sync Records', @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: sync_run.id), class: 'btn btn-sm btn-primary' %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="11" class="text-center">No sync runs found</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <%= paginate @sync_runs %>
+  </div>
+</div>
+
+<div class="mt-3">
+  <%= link_to 'Back to Syncs', @user ? admin_user_syncs_path(@user) : admin_syncs_path, class: 'btn btn-secondary' %>
+</div>
+
+<style>
+  .status-sequence {
+    margin: 20px 0;
+  }
+  .status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .status-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-bottom: 5px;
+  }
+  .status-line {
+    flex-grow: 1;
+    height: 3px;
+    margin-top: 10px;
+  }
+  .status-label {
+    font-size: 12px;
+    text-align: center;
+    max-width: 80px;
+  }
+  .current-label {
+    display: block;
+    font-weight: bold;
+    colour: #007bff;
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  .info-icon-container {
+    cursor: pointer;
+  }
+  .info-icon {
+    color: #6c757d;
+    font-size: 14px;
+  }
+  .info-icon:hover {
+    color: #0d6efd;
+  }
+  .status-tooltip {
+    max-width: 250px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+
+  function openModal(workspaceId) {
+    document.getElementById('modalWorkspace').classList.add('show');
+    document.getElementById('modalWorkspace').style.display = 'block';
+  }
+
+  function closeModal() {
+    document.getElementById('modalWorkspace').classList.remove('show');
+    document.getElementById('modalWorkspace').style.display = 'none';
+  }
+</script>
