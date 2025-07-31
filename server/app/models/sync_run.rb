@@ -20,7 +20,7 @@ class SyncRun < ApplicationRecord
   validates :sync_run_type, presence: true
 
   enum :sync_run_type, %i[general test]
-  enum :status, %i[pending started querying queued in_progress success paused failed canceled]
+  enum :status, %i[pending started querying queued in_progress success paused failed canceled already_synced]
 
   belongs_to :sync
   belongs_to :workspace
@@ -49,6 +49,7 @@ class SyncRun < ApplicationRecord
     state :paused
     state :failed
     state :canceled
+    state :already_synced
 
     # Most states, including "started," allow for a retry by transitioning back to the same state
     # example:
@@ -85,6 +86,10 @@ class SyncRun < ApplicationRecord
 
     event :cancel do
       transitions from: %i[pending started querying queued in_progress paused], to: :canceled
+    end
+
+    event :mark_as_already_synced do
+      transitions from: %i[querying queued], to: :already_synced
     end
   end
 
@@ -134,7 +139,13 @@ class SyncRun < ApplicationRecord
     return if terminal_status?
 
     update!(finished_at: Time.zone.now)
-    update_failure!
+    
+    # Check if all rows were skipped (already synced)
+    if total_query_rows.positive? && total_query_rows == skipped_rows
+      mark_as_already_synced!
+    else
+      update_failure!
+    end
   end
 
   def queue_sync_alert
@@ -148,7 +159,7 @@ class SyncRun < ApplicationRecord
   end
 
   def terminal_status?
-    success? || failed? || canceled?
+    success? || failed? || canceled? || already_synced?
   end
 
   def row_failure_percent

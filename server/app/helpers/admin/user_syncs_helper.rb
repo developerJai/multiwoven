@@ -25,7 +25,7 @@ module Admin
         'success'
       when 'pending', 'started', 'querying', 'queued'
         'warning'
-      when 'in_progress'
+      when 'in_progress', 'already_synced'
         'primary'
       when 'failed'
         'danger'
@@ -58,6 +58,8 @@ module Admin
         "Sync Run is paused"
       when 'canceled'
         "Sync Run is canceled"
+      when 'already_synced'
+        "Sync Run is already synced"
       else
         "Sync Run is in unknown state"
       end

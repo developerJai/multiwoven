@@ -20,7 +20,16 @@ module Activities
         successful_rows:,
         failed_rows:
       )
-      sync_run.update_success
+      
+      # Check if all rows were skipped (already synced)
+      if sync_run.total_query_rows.positive? && sync_run.total_query_rows == sync_run.skipped_rows
+        # Force update to already_synced status
+        sync_run.update!(status: :already_synced)
+        # Also update the sync status
+        sync_run.sync.complete!
+      else
+        sync_run.update_success
+      end
     end
 
     private

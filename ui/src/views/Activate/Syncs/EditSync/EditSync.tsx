@@ -32,7 +32,7 @@ import { APIRequestMethod } from '@/services/common';
 import { useAPIErrorsToast } from '@/hooks/useErrorToast';
 import useGetSyncById from '@/hooks/syncs/useGetSyncById';
 
-const SYNC_STATUS = ['pending', 'started', 'querying', 'queued', 'in_progress'];
+const SYNC_STATUS = ['pending', 'started', 'querying', 'queued', 'in_progress', 'already_synced'];
 
 const RenderTriggerSyncButton = ({
   isSubmitting,
