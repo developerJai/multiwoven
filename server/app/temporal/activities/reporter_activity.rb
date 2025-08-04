@@ -23,8 +23,8 @@ module Activities
       
       # Check if all rows were skipped (already synced)
       if sync_run.total_query_rows.positive? && sync_run.total_query_rows == sync_run.skipped_rows
-        # Force update to already_synced status
-        sync_run.update!(status: :already_synced)
+        # Force update to already_synced status directly in the database to bypass AASM validation
+        sync_run.update_columns(status: SyncRun.statuses[:already_synced], finished_at: Time.zone.now)
         # Also update the sync status
         sync_run.sync.complete!
       else

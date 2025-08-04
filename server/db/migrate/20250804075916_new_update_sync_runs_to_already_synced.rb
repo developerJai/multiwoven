@@ -1,6 +1,4 @@
-# frozen_string_literal: true
-
-class UpdateSyncRunsToAlreadySynced < ActiveRecord::Migration[7.1]
+class NewUpdateSyncRunsToAlreadySynced < ActiveRecord::Migration[7.1]
   def up
     # Safety first - make sure the already_synced status exists
     unless SyncRun.statuses.key?("already_synced")

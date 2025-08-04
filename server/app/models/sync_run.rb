@@ -89,7 +89,7 @@ class SyncRun < ApplicationRecord
     end
 
     event :mark_as_already_synced do
-      transitions from: %i[querying queued], to: :already_synced
+      transitions from: %i[querying queued in_progress], to: :already_synced
     end
   end
 
@@ -106,7 +106,19 @@ class SyncRun < ApplicationRecord
   end
 
   def update_success
-    complete!
+    # Check if all rows were skipped (already synced)
+    if total_query_rows.positive? && total_query_rows == skipped_rows
+      # Force update to already_synced status directly in the database to bypass AASM validation
+      update_columns(status: SyncRun.statuses[:already_synced], finished_at: Time.zone.now)
+      
+      # Log the status change
+      Rails.logger.info("SyncRun #{id} updated to already_synced status because all rows were skipped")
+    else
+      # Otherwise proceed with normal success
+      complete!
+    end
+    
+    # Always complete the sync
     sync.complete!
   end
 
@@ -142,7 +154,10 @@ class SyncRun < ApplicationRecord
     
     # Check if all rows were skipped (already synced)
     if total_query_rows.positive? && total_query_rows == skipped_rows
-      mark_as_already_synced!
+      # Force update to already_synced status directly in the database to bypass AASM validation
+      update_columns(status: SyncRun.statuses[:already_synced])
+      # Also update the sync status
+      sync.complete!
     else
       update_failure!
     end
