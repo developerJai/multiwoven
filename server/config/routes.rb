@@ -30,6 +30,7 @@ Rails.application.routes.draw do
     get 'syncs/:id', to: 'user_syncs#sync_show', as: 'sync'
     get 'syncs/:id/sync_run/:sync_run_id/records', to: 'user_syncs#sync_run_records', as: 'sync_run_records'
     get 'syncs/:id/sync_run/:sync_run_id/logs', to: 'user_syncs#sync_run_logs', as: 'sync_run_logs'
+    post 'syncs/:id/sync_run/:sync_run_id/update_status', to: 'user_syncs#update_sync_run_status', as: 'update_sync_run_status'
 
     root 'users#index'
     get 'setting/index', to: 'settings#index'

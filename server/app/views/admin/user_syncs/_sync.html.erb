@@ -13,6 +13,13 @@
   </ol>
 </nav>
 
+<% if @error_message %>
+  <div class="alert alert-danger text-center"><%= @error_message %></div>
+<% end %>
+<% if @success_message %>
+  <div class="alert alert-success text-center"><%= @success_message %></div>
+<% end %>
+
 <h3>Sync Runs for <%= @sync.name %></h3>
 
 <div class="card mb-4">
@@ -182,7 +189,12 @@
                 <td><%= sync_run.finished_at&.strftime('%Y-%m-%d %H:%M:%S') || 'N/A' %></td>
                 <td><%= sync_run.started_at && sync_run.finished_at ? distance_of_time_in_words(sync_run.started_at, sync_run.finished_at) : 'N/A' %></td>
                 <td>
-                  <%= link_to 'Sync Records', @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: sync_run.id), class: 'btn btn-sm btn-primary' %>
+                  <div class="d-flex gap-2">
+                    <%= link_to 'Sync Records', @user ? records_admin_user_sync_path(@user, @sync, sync_run_id: sync_run.id) : admin_sync_run_records_path(@sync, sync_run_id: sync_run.id), class: 'btn btn-sm btn-primary' %>
+                    <% unless sync_run.failed? %>
+                      <%= button_to 'Mark Failed', @user ? admin_update_sync_run_status_path(@sync, sync_run_id: sync_run.id) : admin_update_sync_run_status_path(@sync, sync_run_id: sync_run.id), method: :post, class: 'btn btn-sm btn-danger', data: { confirm: 'Are you sure you want to mark this sync run as failed?' } %>
+                    <% end %>
+                  </div>
                 </td>
               </tr>
             <% end %>

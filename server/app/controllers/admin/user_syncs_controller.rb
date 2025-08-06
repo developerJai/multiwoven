@@ -3,7 +3,7 @@
 module Admin
   class UserSyncsController < Admin::BaseController
     before_action :find_user
-    before_action :find_sync, only: [:show, :sync_show, :sync_records, :sync_run_records, :sync_logs, :sync_run_logs]
+    before_action :find_sync, only: [:show, :sync_show, :sync_records, :sync_run_records, :sync_logs, :sync_run_logs, :update_sync_run_status]
 
     def syncs_index
       @syncs = Sync.all
@@ -17,6 +17,9 @@ module Admin
 
 
     def sync_show
+      # Transfer any messages from session to instance variables for display
+      @error_message = session.delete(:error_message)
+      @success_message = session.delete(:success_message)
       load_sync_runs_data
     end
 
@@ -38,6 +41,19 @@ module Admin
 
     def sync_run_logs
       load_sync_run_logs_data
+    end
+
+    def update_sync_run_status
+      @sync_run = @sync.sync_runs.find(params[:sync_run_id])
+      
+      if @sync_run.abort!
+        # Use session for flash messages instead of flash object
+        session[:success_message] = "Sync run status updated to failed successfully."
+      else
+        session[:error_message] = "Failed to update sync run status."
+      end
+      
+      redirect_back(fallback_location: @user ? admin_user_sync_path(@user, @sync) : admin_sync_path(@sync))
     end
 
     private

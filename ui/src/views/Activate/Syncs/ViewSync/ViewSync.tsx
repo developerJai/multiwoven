@@ -193,17 +193,54 @@ const ViewSync = (): JSX.Element => {
                 </Text>
               </MenuButton>
               <MenuList>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.All)}>All</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Pending)}>Pending</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Started)}>Started</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Querying)}>Querying</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Queued)}>Queued</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.InProgress)}>In Progress</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Success)}>Success</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Paused)}>Paused</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Failed)}>Failed</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Canceled)}>Canceled</MenuItem>
-                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.AlreadySynced)}>Already Synced</MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.All)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  All
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.Pending)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Pending
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.Querying)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Querying
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.Queued)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Queued
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.InProgress)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  In Progress
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.Success)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Success
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.Failed)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Failed
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => setStatusFilter(SyncRunStatus.AlreadySynced)} 
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                >
+                  Already Synced
+                </MenuItem>
               </MenuList>
             </Menu>
           </Box>

@@ -98,6 +98,7 @@ const StatusTag = ({ status, variant = StatusTagVariants.success }: StatusTagPro
     borderStyle='solid'
     height='22px'
     borderRadius='4px'
+    w='120px'
   >
     <TagLabel fontSize='small' fontWeight='semibold' color={theme[variant].textColor}>
       {status}
