@@ -78,7 +78,7 @@
         <%= f.select :status, 
                     options_for_select([['All', ''], ['Pending', 'pending'], ['Started', 'started'], 
                                        ['Querying', 'querying'], ['Queued', 'queued'], ['In Progress', 'in_progress'],
-                                       ['Success', 'success'], ['Paused', 'paused'], ['Failed', 'failed'], ['Canceled', 'canceled']], 
+                                       ['Success', 'success'], ['Paused', 'paused'], ['Failed', 'failed'], ['Canceled', 'canceled'], ['Already Synced', 'already_synced']], 
                                        selected: params[:status]), 
                     {}, class: 'form-select' %>
       </div>

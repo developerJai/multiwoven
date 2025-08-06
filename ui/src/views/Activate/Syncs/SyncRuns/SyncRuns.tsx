@@ -12,7 +12,11 @@ import { SyncRunsResponse } from '../types';
 import RowsNotFound from '@/components/DataTable/RowsNotFound';
 import useFilters from '@/hooks/useFilters';
 
-const SyncRuns = () => {
+interface SyncRunsProps {
+  statusFilter?: string;
+}
+
+const SyncRuns = ({ statusFilter }: SyncRunsProps) => {
   const activeWorkspaceId = useStore((state) => state.workspaceId);
   const { filters, updateFilters } = useFilters({ page: '1' });
   const { syncId } = useParams();
@@ -22,6 +26,7 @@ const SyncRuns = () => {
     syncId as string,
     Number(filters.page),
     activeWorkspaceId,
+    statusFilter
   );
 
   const handleOnSyncClick = (row: Row<SyncRunsResponse>) => {

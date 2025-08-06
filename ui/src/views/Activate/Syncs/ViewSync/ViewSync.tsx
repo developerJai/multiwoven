@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Divider, Switch, TabList, Text } from '@chakra-ui/react';
+import { Box, Divider, Switch, TabList, Text, Menu, MenuButton, MenuList, MenuItem, Button } from '@chakra-ui/react';
 import moment from 'moment';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 
 import TopBar from '@/components/TopBar';
 import ContentContainer from '@/components/ContentContainer';
@@ -28,6 +29,20 @@ import { useAPIErrorsToast, useErrorToast } from '@/hooks/useErrorToast';
 enum SyncTabs {
   Runs = 'runs',
   Config = 'config',
+}
+
+enum SyncRunStatus {
+  Pending = 'pending',
+  Started = 'started',
+  Querying = 'querying',
+  Queued = 'queued',
+  InProgress = 'in_progress',
+  Success = 'success',
+  Paused = 'paused',
+  Failed = 'failed',
+  Canceled = 'canceled',
+  AlreadySynced = 'already_synced',
+  All = 'all'
 }
 
 const SyncDetails = ({ syncData, syncId }: any) => (
@@ -60,8 +75,8 @@ const SyncDetails = ({ syncData, syncId }: any) => (
   </Box>
 );
 
-const SyncTabContent = ({ syncTab }: { syncTab: SyncTabs }) => {
-  return syncTab === SyncTabs.Runs ? <SyncRuns /> : <EditSync />;
+const SyncTabContent = ({ syncTab, statusFilter }: { syncTab: SyncTabs, statusFilter?: string }) => {
+  return syncTab === SyncTabs.Runs ? <SyncRuns statusFilter={statusFilter} /> : <EditSync />;
 };
 
 const ViewSync = (): JSX.Element => {
@@ -70,6 +85,7 @@ const ViewSync = (): JSX.Element => {
 
   const [syncTab, setSyncTab] = useState<SyncTabs>(SyncTabs.Runs);
   const [syncStatus, setSyncStatus] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<string>(SyncRunStatus.All);
 
   const { syncId } = useParams();
 
@@ -158,6 +174,40 @@ const ViewSync = (): JSX.Element => {
             <TabItem text='Configuration' action={() => setSyncTab(SyncTabs.Config)} />
           </TabList>
         </TabsWrapper>
+        {syncTab === SyncTabs.Runs && (
+          <Box display='flex' flexDir='row' gap='12px'>
+            <Menu>
+              <MenuButton 
+                as={Button} 
+                rightIcon={<ChevronDownIcon />} 
+                size='sm' 
+                variant='outline'
+                width='auto'
+                maxW='200px'
+                textOverflow='ellipsis'
+                whiteSpace='nowrap'
+                overflow='hidden'
+              >
+                <Text as='span' overflow='hidden' textOverflow='ellipsis'>
+                  Status: {statusFilter === SyncRunStatus.All ? 'All' : statusFilter.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </Text>
+              </MenuButton>
+              <MenuList>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.All)}>All</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Pending)}>Pending</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Started)}>Started</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Querying)}>Querying</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Queued)}>Queued</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.InProgress)}>In Progress</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Success)}>Success</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Paused)}>Paused</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Failed)}>Failed</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.Canceled)}>Canceled</MenuItem>
+                <MenuItem onClick={() => setStatusFilter(SyncRunStatus.AlreadySynced)}>Already Synced</MenuItem>
+              </MenuList>
+            </Menu>
+          </Box>
+        )}
         {syncTab === SyncTabs.Config && (
           <Box display='flex' flexDir='row' gap='12px'>
             <Box
@@ -187,7 +237,7 @@ const ViewSync = (): JSX.Element => {
         )}
       </Box>
       <Box pb={1}>
-        <SyncTabContent syncTab={syncTab} />
+        <SyncTabContent syncTab={syncTab} statusFilter={statusFilter !== SyncRunStatus.All ? statusFilter : undefined} />
       </Box>
     </ContentContainer>
   );

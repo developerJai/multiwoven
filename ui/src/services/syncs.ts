@@ -42,10 +42,15 @@ export const getSyncById = (id: string): Promise<ApiResponse<CreateSyncResponse>
 export const getSyncRunsBySyncId = (
   id: string,
   page: string = '1',
+  status?: string,
 ): Promise<ApiResponse<Array<SyncRunsResponse>>> =>
   multiwovenFetch<null, ApiResponse<Array<SyncRunsResponse>>>({
     method: 'get',
-    url: `/syncs/${id}/sync_runs?page=${page}&per_page=10`,
+    url: buildUrlWithParams(`/syncs/${id}/sync_runs`, {
+      page,
+      per_page: '10',
+      status,
+    }),
   });
 
 export const getSyncRunById = (
